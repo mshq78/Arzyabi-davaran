@@ -6,7 +6,7 @@ import { initialiseData } from '../../server/bootstrap';
 let store: PgStore;
 vi.mock('../../server/neon', () => ({ getNeonStore: async () => store }));
 
-import handler from '../../api/[...path]';
+import handler from '../../api/index';
 
 function call(method: string, path: string[], opts: { body?: any; token?: string; query?: Record<string, string> } = {}) {
   return new Promise<{ status: number; body: any; headers: Record<string, string> }>((resolve) => {
@@ -23,7 +23,7 @@ function call(method: string, path: string[], opts: { body?: any; token?: string
     };
     const req: any = {
       method,
-      query: { path, ...(opts.query || {}) },
+      query: { path: path.join('/'), ...(opts.query || {}) },
       body: opts.body,
       headers: opts.token ? { authorization: `Bearer ${opts.token}` } : {},
     };

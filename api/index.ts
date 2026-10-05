@@ -5,7 +5,7 @@ import { ConfigError } from '../server/bootstrap.js';
 import { setStore } from '../server/store.js';
 
 /**
- * Single entry point for every `/api/*` route (see server/handler.ts for the route table).
+ * Single entry point for every `/api/*` route (via the rewrite in vercel.json) (see server/handler.ts for the route table).
  * Authorization: `Authorization: Bearer <token>` issued by POST /api/auth/login.
  *
  * Required env: DATABASE_URL (or POSTGRES_URL), ADMIN_PASSWORD (first administrator).
@@ -18,7 +18,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const send = (status: number, code: string, message: string) => res.status(status).json({ error: { code, message } });
 
   // Diagnostics (public, no data): GET /api/health
-  if (req.query.path === 'health' || (Array.isArray(req.query.path) && req.query.path.join('/') === 'health')) {
+  const requested = (Array.isArray(req.query.path) ? req.query.path.join('/') : String(req.query.path ?? '')).replace(/^\/+|\/+$/g, '');
+  if (requested === 'health') {
     const out: Record<string, unknown> = {
       ok: false,
       time: new Date().toISOString(),
@@ -48,13 +49,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const method = (req.method || 'GET').toUpperCase();
     if (!['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return send(405, 'METHOD_NOT_ALLOWED', 'متد مجاز نیست.');
 
-    const segments = Array.isArray(req.query.path) ? req.query.path : [req.query.path].filter(Boolean);
+    // vercel.json rewrites /api/:path* -> /api/index?path=:path* (a bare catch-all file does not route nested paths)
+    const rawPath = Array.isArray(req.query.path) ? req.query.path.join('/') : String(req.query.path ?? '');
+    const segments = rawPath.split('/').filter(Boolean);
     const query = new URLSearchParams();
     for (const [k, v] of Object.entries(req.query)) {
       if (k === 'path') continue;
       for (const item of Array.isArray(v) ? v : [v]) if (item !== undefined) query.append(k, String(item));
     }
-    const path = '/' + (segments as string[]).join('/') + (query.toString() ? `?${query}` : '');
+    const path = '/' + segments.join('/') + (query.toString() ? `?${query}` : '');
 
     const header = req.headers['authorization'];
     const token = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : undefined;
