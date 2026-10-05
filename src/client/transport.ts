@@ -83,7 +83,15 @@ export async function request<T = any>(
     });
 
     const isJson = (res.headers.get('content-type') || '').includes('application/json');
-    if (!isJson) return networkError; // no backend behind /api (e.g. `vite` without `vercel dev`)
+    if (!isJson) {
+      // No backend behind /api (e.g. `vite` without `vercel dev`), or a proxy / firewall / Vercel error page answered.
+      // Stays retryable (status 0) for the sync engine, but tells the user what actually came back.
+      return {
+        status: 0,
+        ok: false,
+        error: { code: 'BAD_RESPONSE', message: `پاسخ نامعتبر از سرور دریافت شد (کد ${res.status}). اتصال یا فیلترینگ/پراکسی را بررسی کنید.` },
+      };
+    }
 
     const payload = await res.json();
     if (res.ok) return { status: res.status, ok: true, data: payload as T };
@@ -95,7 +103,10 @@ export async function request<T = any>(
         message: payload?.error?.message || 'خطای سرور رخ داد.',
       },
     };
-  } catch {
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      return { ...networkError, error: { code: 'TIMEOUT', message: 'پاسخ سرور بیش از حد طول کشید. اتصال اینترنت را بررسی کنید.' } };
+    }
     return networkError;
   } finally {
     clearTimeout(timer);
