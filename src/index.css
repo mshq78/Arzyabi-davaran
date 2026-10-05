@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Self-hosted font (no third-party requests, works offline) */
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Vazirmatn-Variable.woff2') format('woff2');
+}
+
+/* Brand palette: indigo -> GERA logo blue, teal/sky -> GERA logo cyan */
+@theme {
+  --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+
+  --color-indigo-300: #7fb2ff;
+  --color-indigo-400: #4f95ff;
+  --color-indigo-500: #1a78f5;
+  --color-indigo-600: #0a6af0;
+  --color-indigo-700: #0757c4;
+  --color-indigo-800: #0a408f;
+  --color-indigo-900: #0c2f66;
+  --color-indigo-950: #08203f;
+
+  --color-teal-300: #7be6ff;
+  --color-teal-400: #2bcdff;
+  --color-teal-500: #12b4e8;
+  --color-teal-600: #0b93c0;
+  --color-sky-400: #2bcdff;
+  --color-sky-500: #12b4e8;
+  --color-sky-600: #0b93c0;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html, body {
+    direction: rtl;
+  }
+  body {
+    font-family: 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+/* Custom smooth scroll and touch targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
