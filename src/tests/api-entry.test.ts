@@ -46,6 +46,15 @@ describe('api/[...path] entry', () => {
     await initialiseData(store, { ADMIN_PASSWORD: 'a-long-password' });
   });
 
+  it('GET /api/health reports status without leaking data', async () => {
+    const h = await call('GET', ['health']);
+    expect(h.status).toBe(200);
+    expect(h.body.ok).toBe(true);
+    expect(h.body.db).toBe('ok');
+    expect(h.body.bootstrapped).toEqual({ behaviors: true, admin_user: true });
+    expect(JSON.stringify(h.body)).not.toMatch(/password_hash|postgres/i);
+  });
+
   it('routes login -> authenticated requests and maps errors to { error: { code, message } }', async () => {
     const bad = await call('POST', ['auth', 'login'], { body: { mobile_or_username: 'admin', password: 'nope-nope' } });
     expect(bad.status).toBe(401);

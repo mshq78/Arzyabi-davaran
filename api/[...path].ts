@@ -17,6 +17,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const send = (status: number, code: string, message: string) => res.status(status).json({ error: { code, message } });
 
+  // Diagnostics (public, no data): GET /api/health
+  if (req.query.path === 'health' || (Array.isArray(req.query.path) && req.query.path.join('/') === 'health')) {
+    const out: Record<string, unknown> = {
+      ok: false,
+      time: new Date().toISOString(),
+      env: {
+        database_url: Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL),
+        admin_password: Boolean(process.env.ADMIN_PASSWORD),
+      },
+    };
+    try {
+      const store = await getNeonStore();
+      out.db = 'ok';
+      out.bootstrapped = {
+        behaviors: (await store.getAll('behaviors')).length > 0,
+        admin_user: (await store.getAll('users')).length > 0,
+      };
+      out.ok = true;
+    } catch (err: any) {
+      console.error('health check failed', err);
+      out.db = err instanceof ConfigError ? 'not_configured' : 'error';
+    }
+    return res.status(out.ok ? 200 : 503).json(out);
+  }
+
   try {
     setStore(await getNeonStore());
 

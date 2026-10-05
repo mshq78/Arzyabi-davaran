@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GERA - تشخیص اتصال</title>
+<style>
+  body{font-family:system-ui,Tahoma,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:16px;line-height:1.8}
+  h1{font-size:18px} .box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:12px 14px;margin:10px 0}
+  .ok{color:#4ade80}.bad{color:#f87171}.mid{color:#fbbf24} code{direction:ltr;display:block;white-space:pre-wrap;word-break:break-all;color:#94a3b8;font-size:12px;margin-top:6px}
+  button{background:#0a6af0;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-size:14px;cursor:pointer}
+</style>
+</head>
+<body>
+<h1>تشخیص اتصال GERA</h1>
+<p>این صفحه بدون ورود کار می‌کند و هیچ داده‌ای را نشان نمی‌دهد. نتیجه را برای پشتیبان بفرستید.</p>
+<button id="run">اجرای دوباره</button>
+<div id="out"></div>
+<script>
+const out = document.getElementById('out');
+const row = (title, cls, text, detail) => {
+  const d = document.createElement('div'); d.className = 'box';
+  d.innerHTML = '<b>' + title + '</b>: <span class="' + cls + '">' + text + '</span>' + (detail ? '<code></code>' : '');
+  if (detail) d.querySelector('code').textContent = detail;
+  out.appendChild(d);
+};
+async function probe(title, path, opts) {
+  const t0 = performance.now();
+  try {
+    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 20000);
+    const res = await fetch(path, Object.assign({ cache: 'no-store', signal: ctl.signal }, opts || {}));
+    clearTimeout(timer);
+    const ms = Math.round(performance.now() - t0);
+    const type = res.headers.get('content-type') || '';
+    const body = (await res.text()).slice(0, 400);
+    const json = type.includes('application/json');
+    row(title, json ? 'ok' : 'bad', 'HTTP ' + res.status + ' · ' + (json ? 'JSON' : 'غیر JSON (' + (type || 'بدون نوع') + ')') + ' · ' + ms + 'ms', body);
+  } catch (e) {
+    row(title, 'bad', 'خطای اتصال: ' + (e && e.name === 'AbortError' ? 'timeout بعد از ۲۰ ثانیه' : (e && e.message || e)), '');
+  }
+}
+async function run() {
+  out.innerHTML = '';
+  row('آدرس', 'mid', location.origin, navigator.userAgent);
+  row('وضعیت مرورگر', navigator.onLine ? 'ok' : 'bad', navigator.onLine ? 'آنلاین' : 'آفلاین (navigator.onLine=false)');
+  try {
+    const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : [];
+    row('سرویس‌ورکر', 'mid', regs.length ? 'فعال (' + regs.length + ')' : 'ندارد');
+  } catch (e) { row('سرویس‌ورکر', 'mid', 'نامشخص'); }
+  await probe('سلامت API (/api/health)', '/api/health');
+  await probe('نمونه‌ی GET (/api/me بدون توکن؛ ۴۰۱ یعنی سرور جواب می‌دهد)', '/api/me');
+  await probe('نمونه‌ی POST (/api/auth/login با اطلاعات ساختگی؛ ۴۰۱ یعنی POST عبور می‌کند)', '/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mobile_or_username: 'diag', password: 'diag' })
+  });
+}
+document.getElementById('run').onclick = run; run();
+</script>
+</body>
+</html>
